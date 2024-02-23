@@ -1,5 +1,5 @@
 FROM golang:1.17-alpine AS build_deps
-
+LABEL org.opencontainers.image.source="https://github.com/ri0day/alidns-webhook-with-role"
 RUN apk add --no-cache git
 
 WORKDIR /workspace
