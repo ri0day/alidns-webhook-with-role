@@ -1,21 +1,16 @@
-# alidns-webhook
+# alidns-webhook-with-role
+This repo basicly is an clone of [original repo](https://github.com/pragkent/alidns-webhook) ,except add support alicloud role authentication
 
-Cert-manager ACME DNS webhook provider for alidns.
+## Why
+if the cluster is already running on aliyun ,we can avoid pass plain text accesskey and secretkey to webhook configuration,which  reduce attack surfaces and forget about key rotation
 
-## Install
 
-### Install cert manager
-Please find document here: https://cert-manager.io/docs/installation/kubernetes/
+## How
+add `authmode` in webhook config field , expected  args:`ak`, `role`
 
-### Install webhook (Cert manager v0.11 and above)
-1. Install alidns-webhook
+**AK mode Example:**
 
-  ```bash
-  # Install alidns-webhook to cert-manager namespace. 
-  kubectl apply -f https://raw.githubusercontent.com/pragkent/alidns-webhook/master/deploy/bundle.yaml
-  ```
-
-2. Create secret contains alidns credentials
+secret.yaml
   ```yaml
   apiVersion: v1
   kind: Secret
@@ -25,10 +20,8 @@ Please find document here: https://cert-manager.io/docs/installation/kubernetes/
   data:
     access-key: YOUR_ACCESS_KEY
     secret-key: YOUR_SECRET_KEY
-
   ```
-
-3. Example Issuer
+clusterissuer.yaml
   ```yaml
   apiVersion: cert-manager.io/v1alpha2
   kind: ClusterIssuer
@@ -47,7 +40,8 @@ Please find document here: https://cert-manager.io/docs/installation/kubernetes/
             groupName: acme.yourcompany.com
             solverName: alidns
             config:
-              region: ""
+              authmode: ak
+              region: "cn-hangzhou"
               accessKeySecretRef:
                 name: alidns-secret
                 key: access-key
@@ -55,53 +49,25 @@ Please find document here: https://cert-manager.io/docs/installation/kubernetes/
                 name: alidns-secret
                 key: secret-key
   ```
+----
+**Role mode Example:**
 
-4. Issue a certificate
-```yaml
-apiVersion: cert-manager.io/v1alpha2
-kind: Certificate
-metadata:
-  name: example-tls
-spec:
-  secretName: example-com-tls
-  commonName: example.com
-  dnsNames:
-  - example.com
-  - "*.example.com"
-  issuerRef:
-    name: letsencrypt-staging
-    kind: ClusterIssuer
+1. create an ram role(`cert-manager-webhook-role`) trust ecs service ,allow pods can assume to role 
+```bash
+aliyun ram CreateRole --region cn-hangzhou --RoleName 'cert-manager-webhook-role' --Description 'cert-manager webhook add dns records for dns validation' --AssumeRolePolicyDocument '{"Statement":[{"Action":"sts:AssumeRole","Effect":"Allow","Principal":{"Service":["ecs.aliyuncs.com"]}}],"Version":"1"}'
 ```
-
-### Install webhook (Cert manager prior to v0.11)
-1. Install alidns-webhook
-
-  ```bash
-  # Install alidns-webhook to cert-manager namespace. 
-  kubectl apply -f https://raw.githubusercontent.com/pragkent/alidns-webhook/master/deploy/legacy.yaml
-  ```
-
-2. Create secret contains alidns credentials
+2. grant permission to role,for simplicity i will use built-in policy `AliyunDNSFullAccess`,you may craft you own policy to limit the permission of you role
+```bash
+aliyun ram AttachPolicyToRole --region cn-hangzhou --PolicyType System --PolicyName AliyunDNSFullAccess --RoleName 'cert-manager-webhook-role'
+```
   ```yaml
-  apiVersion: v1
-  kind: Secret
-  metadata:
-    name: alidns-secret
-    namespace: cert-manager
-  data:
-    access-key: YOUR_ACCESS_KEY
-    secret-key: YOUR_SECRET_KEY
-
-  ```
-
-3. Example Issuer
-  ```yaml
-  apiVersion: certmanager.k8s.io/v1alpha1
+  apiVersion: cert-manager.io/v1alpha2
   kind: ClusterIssuer
   metadata:
     name: letsencrypt-staging
   spec:
     acme:
+      # Change to your letsencrypt email
       email: certmaster@example.com
       server: https://acme-staging-v02.api.letsencrypt.org/directory
       privateKeySecretRef:
@@ -112,41 +78,9 @@ spec:
             groupName: acme.yourcompany.com
             solverName: alidns
             config:
-              region: ""
-              accessKeySecretRef:
-                name: alidns-secret
-                key: access-key
-              secretKeySecretRef:
-                name: alidns-secret
-                key: secret-key
+              authmode: role
+              region: "cn-hangzhou"
+              rolename: cert-manager-dns-role
   ```
 
-4. Issue a certificate
-```yaml
-apiVersion: certmanager.k8s.io/v1alpha1
-kind: Certificate
-metadata:
-  name: example-tls
-spec:
-  secretName: example-com-tls
-  commonName: example.com
-  dnsNames:
-  - example.com
-  - "*.example.com"
-  issuerRef:
-    name: letsencrypt-staging
-    kind: ClusterIssuer
-```
-
-## Development
-### Running the test suite
-
-1. Edit `testdata/alidns/alidns-secret.yaml` and `testdata/alidns/config.json`.
-
-2. Run test suites:
-
-```bash
-$ ./scripts/fetch-test-binaries.sh
-$ TEST_ZONE_NAME=example.com go test .
-```
 
