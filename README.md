@@ -23,7 +23,7 @@ secret.yaml
   ```
 clusterissuer.yaml
   ```yaml
-  apiVersion: cert-manager.io/v1alpha2
+  apiVersion: cert-manager.io/v1
   kind: ClusterIssuer
   metadata:
     name: letsencrypt-staging
@@ -50,18 +50,23 @@ clusterissuer.yaml
                 key: secret-key
   ```
 ----
-**Role mode Example:**
+**Role mode Example for self-hosted kubernetes on aliyun**
 
 1. create an ram role(`cert-manager-webhook-role`) trust ecs service ,allow pods can assume to role 
 ```bash
 aliyun ram CreateRole --region cn-hangzhou --RoleName 'cert-manager-webhook-role' --Description 'cert-manager webhook add dns records for dns validation' --AssumeRolePolicyDocument '{"Statement":[{"Action":"sts:AssumeRole","Effect":"Allow","Principal":{"Service":["ecs.aliyuncs.com"]}}],"Version":"1"}'
 ```
-2. grant permission to role,for simplicity i will use built-in policy `AliyunDNSFullAccess`,you may craft you own policy to limit the permission of you role
+2. attach policy to role,for simplicity i will use built-in policy `AliyunDNSFullAccess`,you may craft you own policy to restrict the permission of you role
 ```bash
 aliyun ram AttachPolicyToRole --region cn-hangzhou --PolicyType System --PolicyName AliyunDNSFullAccess --RoleName 'cert-manager-webhook-role'
 ```
+3. attch role to kubernetes worker nodes
+```bash
+aliyun ecs AttachInstanceRamRole --region cn-hangzhou --RegionId 'cn-hangzhou' --RamRoleName 'cert-manager-webhook-role' --InstanceIds '["instanceid-1","instanceid-2"]'
+```
+4. create an clusterissuer
   ```yaml
-  apiVersion: cert-manager.io/v1alpha2
+  apiVersion: cert-manager.io/v1
   kind: ClusterIssuer
   metadata:
     name: letsencrypt-staging
@@ -82,5 +87,29 @@ aliyun ram AttachPolicyToRole --region cn-hangzhou --PolicyType System --PolicyN
               region: "cn-hangzhou"
               rolename: cert-manager-dns-role
   ```
+ 5. make an certificate request in default namespace
+```yaml
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: example-tls
+  namespace: default
+spec:
+  secretName: example-com-tls
+  commonName: certest123f.example.com
+  dnsNames:
+  - certest123f.example.com
+  - "*.example.com"
+  issuerRef:
+    name: letsencrypt-staging
+    kind: ClusterIssuer
+    group: cert-manager.io
+```
+ 6. after few mins, check certificates `kubectl -n default describe certificate/example-tls` 
 
-
+**Role mode Example for aliyun kubernetes service ACK**
+ACK cluster already have role attached to worker nodes,you can get it from web console or api
+just attch policy to worker nodes role, and config rolename  in clusterissuer
+```bash
+aliyun ram AttachPolicyToRole --region cn-hangzhou --PolicyType System --PolicyName AliyunDNSFullAccess --RoleName KubernetesWorkerRole-xxxxx
+```
