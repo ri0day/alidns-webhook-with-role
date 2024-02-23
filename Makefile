@@ -1,4 +1,4 @@
-IMAGE_NAME := ghcr.io/ri0day/alidns-webhook
+IMAGE_NAME := ghcr.io/ri0day/alidns-webhook-with-role
 IMAGE_TAG := $(shell cat VERSION)
 
 test:
