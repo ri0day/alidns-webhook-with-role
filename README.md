@@ -1,12 +1,12 @@
 # alidns-webhook-with-role
-This repo basicly is an clone of [original repo](https://github.com/pragkent/alidns-webhook) ,except add support alicloud role authentication
+This repo is based on [pragkent/alidns-webhook](https://github.com/pragkent/alidns-webhook), added ram role authentication support
 
 ## Why
-if the cluster is already running on aliyun ,we can avoid pass plain text accesskey and secretkey to webhook configuration,which  reduce attack surfaces and forget about key rotation
+if the kubernetes cluster is running on aliyun ecs or ack,we can use EcsRamRole instead of accesskey ,which  reduce attack-surface and forget about key rotation
 
 
 ## How
-add `authmode` in webhook config field , expected  args:`ak`, `role`
+add `authmode` in webhook config field , expected  args: `ak`, `role`
 
 **AK mode Example:**
 
@@ -107,10 +107,13 @@ spec:
 ```
  6. after few mins, check certificates `kubectl -n default describe certificate/example-tls` 
 
+----
+
 **Role mode Example for aliyun kubernetes service ACK**
 
-ACK cluster already have role attached to worker nodes,you can get it from web console or api
-just attch policy to worker nodes role, and config rolename  in clusterissuer
+ACK cluster already have role attached to worker nodes,you can get it from web console or apis
+
+just attach policy to worker nodes role, and config rolename  in clusterissuer object
 ```bash
 aliyun ram AttachPolicyToRole --region cn-hangzhou --PolicyType System --PolicyName AliyunDNSFullAccess --RoleName KubernetesWorkerRole-xxxxx
 ```
