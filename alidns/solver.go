@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+        "github.com/aliyun/alibaba-cloud-sdk-go/sdk/auth"
 	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/auth/credentials"
 	"github.com/jetstack/cert-manager/pkg/acme/webhook"
 	v1alpha1 "github.com/jetstack/cert-manager/pkg/acme/webhook/apis/acme/v1alpha1"
@@ -76,7 +77,7 @@ func (s *Solver) newClientFromChallenge(ch *v1alpha1.ChallengeRequest) (*Client,
 
 	klog.Infof("Decoded config: %v", cfg)
 
-	cred, err := s.getCredential(&cfg, ch.ResourceNamespace)
+	cred, err := s.getCredential(cfg, ch.ResourceNamespace)
 	if err != nil {
 		return nil, fmt.Errorf("get credential error: %v", err)
 	}
@@ -89,7 +90,7 @@ func (s *Solver) newClientFromChallenge(ch *v1alpha1.ChallengeRequest) (*Client,
 	return client, nil
 }
 
-func (s *Solver) getCredential(cfg *Config, ns string) (*credentials.AccessKeyCredential, error) {
+func (s *Solver) getCredential(cfg Config, ns string) (auth.Credential, error) {
 	switch cfg.AuthMode {
 	case "ak":
 		accessKey, err := s.getSecretData(cfg.AccessKeySecretRef, ns)
@@ -104,14 +105,12 @@ func (s *Solver) getCredential(cfg *Config, ns string) (*credentials.AccessKeyCr
 		return credentials.NewAccessKeyCredential(string(accessKey), string(secretKey)), nil
 
 	case "role":
-		creds, err = credentials.NewEcsRamRoleCredential(cfg.RoleName)
-		if err != nil {
-			return nil, err
-		}
+		creds := credentials.NewEcsRamRoleCredential(cfg.RoleName)
 		return creds, nil
 
 	default:
-		return nil, klog.Errorf("Invalid auth mode :%v, Ensure authmode is either 'ak' or 'role'",cfg.AuthMode)
+		klog.Errorf("Invalid auth mode :%v, Ensure authmode is either 'ak' or 'role'",cfg.AuthMode)
+		return nil,nil 
 	}
 }
 

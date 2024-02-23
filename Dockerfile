@@ -4,7 +4,8 @@ RUN apk add --no-cache git
 
 WORKDIR /workspace
 ENV GO111MODULE=on
-
+ENV GOOS linux
+ENV GOPROXY https://goproxy.cn,direct
 COPY go.mod .
 COPY go.sum .
 
@@ -14,9 +15,9 @@ FROM build_deps AS build
 
 COPY . .
 
-RUN CGO_ENABLED=0 go build -o webhook -ldflags '-w -extldflags "-static"' .
+RUN CGO_ENABLED=0 GOOS=linux GOPROXY=https://goproxy.cn,direct go build -o webhook -ldflags '-w -extldflags "-static"' .
 
-FROM alpine:3.15
+FROM alpine:3.18
 
 RUN apk add --no-cache ca-certificates
 
