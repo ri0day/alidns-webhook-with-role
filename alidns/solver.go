@@ -90,21 +90,33 @@ func (s *Solver) newClientFromChallenge(ch *v1alpha1.ChallengeRequest) (*Client,
 }
 
 func (s *Solver) getCredential(cfg *Config, ns string) (*credentials.AccessKeyCredential, error) {
-	accessKey, err := s.getSecretData(cfg.AccessKeySecretRef, ns)
-	if err != nil {
-		return nil, err
-	}
+	switch cfg.AuthMode {
+	case "ak":
+		accessKey, err := s.getSecretData(cfg.AccessKeySecretRef, ns)
+		if err != nil {
+			return nil, err
+		}
 
-	secretKey, err := s.getSecretData(cfg.SecretKeySecretRef, ns)
-	if err != nil {
-		return nil, err
-	}
+		secretKey, err := s.getSecretData(cfg.SecretKeySecretRef, ns)
+		if err != nil {
+			return nil, err
+		}
+		return credentials.NewAccessKeyCredential(string(accessKey), string(secretKey)), nil
 
-	return credentials.NewAccessKeyCredential(string(accessKey), string(secretKey)), nil
+	case "role":
+		creds, err = credentials.NewEcsRamRoleCredential(cfg.RoleName)
+		if err != nil {
+			return nil, err
+		}
+		return creds, nil
+
+	default:
+		return nil, klog.Errorf("Invalid auth mode :%v, Ensure authmode is either 'ak' or 'role'",cfg.AuthMode)
+	}
 }
 
 func (s *Solver) getSecretData(selector cmmetav1.SecretKeySelector, ns string) ([]byte, error) {
-	secret, err := s.client.CoreV1().Secrets(ns).Get(context.TODO(),selector.Name, metav1.GetOptions{})
+	secret, err := s.client.CoreV1().Secrets(ns).Get(context.TODO(), selector.Name, metav1.GetOptions{})
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to load secret %q", ns+"/"+selector.Name)
 	}

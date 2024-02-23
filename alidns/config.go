@@ -27,9 +27,11 @@ import (
 // be used by your provider here, you should reference a Kubernetes Secret
 // resource and fetch these credentials using a Kubernetes clientset.
 type Config struct {
+	AuthMode           string                     `json:"authmode"`
+	RoleName           string                     `json:"rolename,omitempty"`
 	Region             string                     `json:"region"`
-	AccessKeySecretRef cmmetav1.SecretKeySelector `json:"accessKeySecretRef"`
-	SecretKeySecretRef cmmetav1.SecretKeySelector `json:"secretKeySecretRef"`
+	AccessKeySecretRef cmmetav1.SecretKeySelector `json:"accessKeySecretRef,omitempty"`
+	SecretKeySecretRef cmmetav1.SecretKeySelector `json:"secretKeySecretRef,omitempty"`
 }
 
 // loadConfig is a small helper function that decodes JSON configuration into
