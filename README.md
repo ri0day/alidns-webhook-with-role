@@ -6,7 +6,15 @@ if the kubernetes cluster is running on aliyun ecs or ack,we can use EcsRamRole 
 
 
 ## How
-add `authmode` in webhook config field , expected  args: `ak`, `role`
+### Install cert-manager
+follow  official document  https://cert-manager.io/docs/releases/
+
+### Install alidns-webhook
+```bash
+kubectl apply -f https://raw.githubusercontent.com/ri0day/alidns-webhook-with-role/master/deploy/bundle.yaml
+```
+### config authmode in issuer or clusterissuer
+
 
 **AK mode Example:**
 
@@ -64,7 +72,7 @@ aliyun ram AttachPolicyToRole --region cn-hangzhou --PolicyType System --PolicyN
 ```bash
 aliyun ecs AttachInstanceRamRole --region cn-hangzhou --RegionId 'cn-hangzhou' --RamRoleName 'cert-manager-webhook-role' --InstanceIds '["instanceid-1","instanceid-2"]'
 ```
-4. create an clusterissuer
+4. create an clusterissuer with  `authmode=role`
   ```yaml
   apiVersion: cert-manager.io/v1
   kind: ClusterIssuer
@@ -92,28 +100,28 @@ aliyun ecs AttachInstanceRamRole --region cn-hangzhou --RegionId 'cn-hangzhou' -
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: example-tls
+  name: yourdomain-tls
   namespace: default
 spec:
-  secretName: example-com-tls
-  commonName: certest123f.example.com
+  secretName: yourdomain-com-tls
+  commonName: certest123f.yourdomain.com
   dnsNames:
-  - certest123f.example.com
-  - "*.example.com"
+  - certest123f.yourdomain.com
+  - "*.yourdomain.com"
   issuerRef:
     name: letsencrypt-staging
     kind: ClusterIssuer
     group: cert-manager.io
 ```
- 6. after few mins, check certificates `kubectl -n default describe certificate/example-tls` 
+ 6. after few mins, check certificates `kubectl -n default describe certificate/yourdomain-tls` 
 
 ----
 
-**Role mode Example for aliyun kubernetes service ACK**
+**Role mode for aliyun kubernetes service ACK**
 
 ACK cluster already have role attached to worker nodes,you can get it from web console or apis
 
-just attach policy to worker nodes role, and config rolename  in clusterissuer object
+just attach policy to worker nodes role, and config `authmode: role` and `rolename: KubernetesWorkRole-xxxx` in issuer or clusterissuer object
 ```bash
 aliyun ram AttachPolicyToRole --region cn-hangzhou --PolicyType System --PolicyName AliyunDNSFullAccess --RoleName KubernetesWorkerRole-xxxxx
 ```
