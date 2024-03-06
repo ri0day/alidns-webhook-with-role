@@ -64,7 +64,39 @@ clusterissuer.yaml
 ```bash
 aliyun ram CreateRole --region cn-hangzhou --RoleName 'cert-manager-webhook-role' --Description 'cert-manager webhook add dns records for dns validation' --AssumeRolePolicyDocument '{"Statement":[{"Action":"sts:AssumeRole","Effect":"Allow","Principal":{"Service":["ecs.aliyuncs.com"]}}],"Version":"1"}'
 ```
-2. attach policy to role,for simplicity i will use built-in policy `AliyunDNSFullAccess`,you may craft you own policy to restrict the permission of you role
+2. attach policy to role,for simplicity i will use built-in policy `AliyunDNSFullAccess`,you may craft you own policy to restrict the permission of you role,you can use following policy template for starter
+<details>
+  <summary>policy-template</summary>
+  
+  ```json
+  
+    {
+      "Version": "1",
+      "Statement": [
+          {
+              "Effect": "Allow",
+              "Action": "alidns:DescribeDomains",
+              "Resource": "acs:alidns::<you-account-id>:domain/*"
+          },
+          {
+              "Effect": "Allow",
+              "Action": [
+                  "alidns:AddDomainRecord",
+                  "alidns:UpdateDomainRecord",
+                  "alidns:DescribeDomainRecords",
+                  "alidns:DeleteDomainRecord"
+              ],
+              "Resource": [
+                  "acs:alidns::1692386295190525:domain/<you-domain-name>",
+                  "acs:alidns::1692386295190525:domain/<you-domain-id>"
+              ]
+          }
+      ]
+    }
+    
+  ```
+</details>
+
 ```bash
 aliyun ram AttachPolicyToRole --region cn-hangzhou --PolicyType System --PolicyName AliyunDNSFullAccess --RoleName 'cert-manager-webhook-role'
 ```
